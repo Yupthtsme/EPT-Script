@@ -1,6 +1,10 @@
 --========================================================
--- CONFIG VARIABLES (CUSTOMIZE HERE)
+-- PART 1 — CONFIG + CORE + WINDOW + DRAGGING + SNOW
 --========================================================
+
+-------------------------
+-- CUSTOMIZATION VARS  --
+-------------------------
 
 local COLLECT_DELAY  = 0.05
 local BUY_DELAY      = 0.15
@@ -8,6 +12,7 @@ local CRATE_DELAY    = 1.0
 local REBIRTH_DELAY  = 0.5
 local LOOP_DELAY     = 0.05
 
+-- Purple snow settings
 local SNOW_ENABLED   = true
 local SNOW_COLOR     = Color3.fromRGB(180, 80, 255)
 local SNOW_DENSITY   = 35
@@ -16,19 +21,19 @@ local SNOW_SIZE      = 3
 
 local REBIRTH_COOLDOWN = false
 
---========================================================
--- SERVICES / PLAYER / TYCOON
---========================================================
+-------------------------
+-- SERVICES / PLAYER   --
+-------------------------
 
 local TweenService = game:GetService("TweenService")
-local UserInputService = game:GetService("UserInputService")
+local UIS = game:GetService("UserInputService")
 
 local player = game.Players.LocalPlayer
 local tycoon = workspace.Tycoons[player.Name]
 
---========================================================
--- UI ROOT + MAIN WINDOW (SCALED)
---========================================================
+-------------------------
+-- ROOT SCREEN GUI     --
+-------------------------
 
 local screen = Instance.new("ScreenGui")
 screen.Name = "SynapseTycoonUI"
@@ -36,63 +41,69 @@ screen.IgnoreGuiInset = true
 screen.ResetOnSpawn = false
 screen.Parent = game:GetService("CoreGui")
 
+-------------------------
+-- MAIN WINDOW         --
+-------------------------
+
 local mainFrame = Instance.new("Frame")
 mainFrame.Name = "MainWindow"
 mainFrame.AnchorPoint = Vector2.new(0.5, 0.5)
 mainFrame.Position = UDim2.new(0.5, 0, 0.5, 0)
-mainFrame.Size = UDim2.new(0.35, 0, 0.4, 0) -- scaled
+mainFrame.Size = UDim2.new(0.35, 0, 0.4, 0) -- scaled Synapse-style
 mainFrame.BackgroundColor3 = Color3.fromRGB(25, 25, 30)
 mainFrame.BorderSizePixel = 0
 mainFrame.Parent = screen
 
-local mainCorner = Instance.new("UICorner", mainFrame)
-mainCorner.CornerRadius = UDim.new(0, 10)
+Instance.new("UICorner", mainFrame).CornerRadius = UDim.new(0, 10)
 
 local mainStroke = Instance.new("UIStroke", mainFrame)
 mainStroke.Thickness = 2
 mainStroke.Color = Color3.fromRGB(120, 120, 140)
 
--- draggable
-do
-    local dragging = false
-    local dragStart, startPos
+-------------------------
+-- DRAGGING SYSTEM     --
+-------------------------
 
-    mainFrame.InputBegan:Connect(function(input)
-        if input.UserInputType == Enum.UserInputType.MouseButton1 then
-            dragging = true
-            dragStart = input.Position
-            startPos = mainFrame.Position
-        end
-    end)
+local dragging = false
+local dragStart
+local startPos
 
-    UserInputService.InputEnded:Connect(function(input)
-        if input.UserInputType == Enum.UserInputType.MouseButton1 then
-            dragging = false
-        end
-    end)
+mainFrame.InputBegan:Connect(function(input)
+    if input.UserInputType == Enum.UserInputType.MouseButton1 then
+        dragging = true
+        dragStart = input.Position
+        startPos = mainFrame.Position
+    end
+end)
 
-    UserInputService.InputChanged:Connect(function(input)
-        if dragging and input.UserInputType == Enum.UserInputType.MouseMovement then
-            local delta = input.Position - dragStart
-            mainFrame.Position = UDim2.new(
-                startPos.X.Scale,
-                startPos.X.Offset + delta.X,
-                startPos.Y.Scale,
-                startPos.Y.Offset + delta.Y
-            )
-        end
-    end)
-end
+UIS.InputChanged:Connect(function(input)
+    if dragging and input.UserInputType == Enum.UserInputType.MouseMovement then
+        local delta = input.Position - dragStart
+        mainFrame.Position = UDim2.new(
+            startPos.X.Scale,
+            startPos.X.Offset + delta.X,
+            startPos.Y.Scale,
+            startPos.Y.Offset + delta.Y
+        )
+    end
+end)
 
---========================================================
--- PURPLE SNOW (UI-ONLY BACKGROUND)
---========================================================
+UIS.InputEnded:Connect(function(input)
+    if input.UserInputType == Enum.UserInputType.MouseButton1 then
+        dragging = false
+    end
+end)
+
+-------------------------
+-- PURPLE SNOW LAYER   --
+-------------------------
 
 local snowLayer = Instance.new("Frame")
 snowLayer.Name = "SnowLayer"
 snowLayer.BackgroundTransparency = 1
 snowLayer.Size = UDim2.new(1, 0, 1, 0)
 snowLayer.ClipsDescendants = true
+snowLayer.ZIndex = 0
 snowLayer.Parent = mainFrame
 
 local function spawnSnow()
@@ -107,6 +118,7 @@ local function spawnSnow()
                 flake.BorderSizePixel = 0
                 flake.BackgroundTransparency = 0.2
                 flake.Position = UDim2.new(math.random(), 0, 0, -math.random(0, 50))
+                flake.ZIndex = 0
                 flake.Parent = snowLayer
 
                 task.spawn(function()
@@ -127,19 +139,19 @@ end
 
 spawnSnow()
 
---========================================================
--- HEADER + TABS
---========================================================
+-------------------------
+-- HEADER BAR          --
+-------------------------
 
 local header = Instance.new("Frame")
 header.Name = "Header"
 header.Size = UDim2.new(1, 0, 0.15, 0)
 header.BackgroundColor3 = Color3.fromRGB(20, 20, 25)
 header.BorderSizePixel = 0
+header.ZIndex = 2
 header.Parent = mainFrame
 
-local headerCorner = Instance.new("UICorner", header)
-headerCorner.CornerRadius = UDim.new(0, 10)
+Instance.new("UICorner", header).CornerRadius = UDim.new(0, 10)
 
 local title = Instance.new("TextLabel")
 title.Name = "Title"
@@ -151,6 +163,7 @@ title.Text = "Tycoon Control Panel"
 title.TextColor3 = Color3.fromRGB(220, 220, 230)
 title.TextScaled = true
 title.TextXAlignment = Enum.TextXAlignment.Left
+title.ZIndex = 3
 title.Parent = header
 
 local rebirthLabel = Instance.new("TextLabel")
@@ -163,13 +176,19 @@ rebirthLabel.Text = "Rebirths: 0"
 rebirthLabel.TextColor3 = Color3.fromRGB(200, 200, 210)
 rebirthLabel.TextScaled = true
 rebirthLabel.TextXAlignment = Enum.TextXAlignment.Right
+rebirthLabel.ZIndex = 3
 rebirthLabel.Parent = header
+
+-------------------------
+-- TAB BAR             --
+-------------------------
 
 local tabsFrame = Instance.new("Frame")
 tabsFrame.Name = "Tabs"
 tabsFrame.BackgroundTransparency = 1
 tabsFrame.Size = UDim2.new(1, 0, 0.1, 0)
 tabsFrame.Position = UDim2.new(0, 0, 0.15, 0)
+tabsFrame.ZIndex = 2
 tabsFrame.Parent = mainFrame
 
 local settingsTab = Instance.new("TextButton")
@@ -182,6 +201,7 @@ settingsTab.Font = Enum.Font.SourceSansBold
 settingsTab.Text = "Settings"
 settingsTab.TextColor3 = Color3.fromRGB(230, 230, 240)
 settingsTab.TextScaled = true
+settingsTab.ZIndex = 3
 settingsTab.Parent = tabsFrame
 
 local consoleTab = Instance.new("TextButton")
@@ -194,11 +214,12 @@ consoleTab.Font = Enum.Font.SourceSansBold
 consoleTab.Text = "Console"
 consoleTab.TextColor3 = Color3.fromRGB(180, 180, 200)
 consoleTab.TextScaled = true
+consoleTab.ZIndex = 3
 consoleTab.Parent = tabsFrame
 
---========================================================
--- CONTENT FRAMES (SETTINGS + CONSOLE)
---========================================================
+-------------------------
+-- CONTENT CONTAINER   --
+-------------------------
 
 local contentFrame = Instance.new("Frame")
 contentFrame.Name = "Content"
@@ -206,15 +227,17 @@ contentFrame.BackgroundColor3 = Color3.fromRGB(18, 18, 24)
 contentFrame.BorderSizePixel = 0
 contentFrame.Position = UDim2.new(0, 0, 0.25, 0)
 contentFrame.Size = UDim2.new(1, 0, 0.75, 0)
+contentFrame.ZIndex = 2
 contentFrame.Parent = mainFrame
 
-local contentCorner = Instance.new("UICorner", contentFrame)
-contentCorner.CornerRadius = UDim.new(0, 10)
+Instance.new("UICorner", contentFrame).CornerRadius = UDim.new(0, 10)
 
+-- These will be filled in Part 2 & 3
 local settingsFrame = Instance.new("Frame")
 settingsFrame.Name = "SettingsFrame"
 settingsFrame.BackgroundTransparency = 1
 settingsFrame.Size = UDim2.new(1, 0, 1, 0)
+settingsFrame.ZIndex = 3
 settingsFrame.Parent = contentFrame
 
 local consoleFrame = Instance.new("Frame")
@@ -222,6 +245,7 @@ consoleFrame.Name = "ConsoleFrame"
 consoleFrame.BackgroundTransparency = 1
 consoleFrame.Size = UDim2.new(1, 0, 1, 0)
 consoleFrame.Visible = false
+consoleFrame.ZIndex = 3
 consoleFrame.Parent = contentFrame
 
 local function setTab(active)
@@ -247,13 +271,56 @@ consoleTab.MouseButton1Click:Connect(function()
 end)
 
 --========================================================
--- SLIDER CREATION HELPER
+-- PART 2 — SETTINGS UI + SLIDERS + AUTO‑RESIZING PANEL
 --========================================================
+
+-------------------------
+-- SETTINGS LIST LAYOUT
+-------------------------
+
+local settingsList = Instance.new("UIListLayout", settingsFrame)
+settingsList.Padding = UDim.new(0, 6)
+settingsList.FillDirection = Enum.FillDirection.Vertical
+settingsList.HorizontalAlignment = Enum.HorizontalAlignment.Center
+settingsList.VerticalAlignment = Enum.VerticalAlignment.Top
+settingsList.SortOrder = Enum.SortOrder.LayoutOrder
+
+-------------------------
+-- PANEL AUTO‑RESIZE
+-------------------------
+
+local function resizePanelToFit()
+    local totalHeight = 0
+
+    for _, child in ipairs(settingsFrame:GetChildren()) do
+        if child:IsA("Frame") then
+            totalHeight += child.AbsoluteSize.Y + 6
+        end
+    end
+
+    local minHeight = 0.35  -- scaled minimum
+    local maxHeight = 0.75  -- scaled maximum
+
+    local screenY = screen.AbsoluteSize.Y
+    local pixelHeight = math.clamp(totalHeight, screenY * minHeight, screenY * maxHeight)
+    local newScale = pixelHeight / screenY
+
+    TweenService:Create(
+        mainFrame,
+        TweenInfo.new(0.25, Enum.EasingStyle.Quad, Enum.EasingDirection.Out),
+        { Size = UDim2.new(mainFrame.Size.X.Scale, 0, newScale, 0) }
+    ):Play()
+end
+
+-------------------------
+-- SLIDER CREATION
+-------------------------
 
 local function createSlider(parent, labelText, minValue, maxValue, initialValue, onChanged)
     local container = Instance.new("Frame")
     container.Size = UDim2.new(1, -20, 0, 40)
     container.BackgroundTransparency = 1
+    container.ZIndex = 4
     container.Parent = parent
 
     local label = Instance.new("TextLabel")
@@ -265,6 +332,7 @@ local function createSlider(parent, labelText, minValue, maxValue, initialValue,
     label.TextColor3 = Color3.fromRGB(220, 220, 230)
     label.TextScaled = true
     label.TextXAlignment = Enum.TextXAlignment.Left
+    label.ZIndex = 4
     label.Parent = container
 
     local valueLabel = Instance.new("TextLabel")
@@ -276,6 +344,7 @@ local function createSlider(parent, labelText, minValue, maxValue, initialValue,
     valueLabel.TextColor3 = Color3.fromRGB(200, 200, 210)
     valueLabel.TextScaled = true
     valueLabel.TextXAlignment = Enum.TextXAlignment.Right
+    valueLabel.ZIndex = 4
     valueLabel.Parent = container
 
     local bar = Instance.new("Frame")
@@ -283,10 +352,10 @@ local function createSlider(parent, labelText, minValue, maxValue, initialValue,
     bar.Position = UDim2.new(0, 0, 0.7, 0)
     bar.BackgroundColor3 = Color3.fromRGB(40, 40, 55)
     bar.BorderSizePixel = 0
+    bar.ZIndex = 4
     bar.Parent = container
 
-    local barCorner = Instance.new("UICorner", bar)
-    barCorner.CornerRadius = UDim.new(0, 4)
+    Instance.new("UICorner", bar).CornerRadius = UDim.new(0, 4)
 
     local knob = Instance.new("Frame")
     knob.Size = UDim2.new(0, 14, 0, 14)
@@ -294,10 +363,10 @@ local function createSlider(parent, labelText, minValue, maxValue, initialValue,
     knob.Position = UDim2.new((initialValue - minValue) / (maxValue - minValue), 0, 0.5, 0)
     knob.BackgroundColor3 = SNOW_COLOR
     knob.BorderSizePixel = 0
+    knob.ZIndex = 5
     knob.Parent = bar
 
-    local knobCorner = Instance.new("UICorner", knob)
-    knobCorner.CornerRadius = UDim.new(1, 0)
+    Instance.new("UICorner", knob).CornerRadius = UDim.new(1, 0)
 
     local dragging = false
 
@@ -307,71 +376,76 @@ local function createSlider(parent, labelText, minValue, maxValue, initialValue,
         end
     end)
 
-    UserInputService.InputEnded:Connect(function(input)
+    UIS.InputEnded:Connect(function(input)
         if input.UserInputType == Enum.UserInputType.MouseButton1 then
             dragging = false
         end
     end)
 
+    local function updateSlider(input)
+        local rel = (input.Position.X - bar.AbsolutePosition.X) / bar.AbsoluteSize.X
+        rel = math.clamp(rel, 0, 1)
+
+        knob.Position = UDim2.new(rel, 0, 0.5, 0)
+
+        local value = minValue + (maxValue - minValue) * rel
+        valueLabel.Text = string.format("%.3f", value)
+
+        onChanged(value)
+    end
+
     bar.InputBegan:Connect(function(input)
         if input.UserInputType == Enum.UserInputType.MouseButton1 then
             dragging = true
-            local rel = (input.Position.X - bar.AbsolutePosition.X) / bar.AbsoluteSize.X
-            rel = math.clamp(rel, 0, 1)
-            knob.Position = UDim2.new(rel, 0, 0.5, 0)
-            local value = minValue + (maxValue - minValue) * rel
-            valueLabel.Text = string.format("%.3f", value)
-            onChanged(value)
+            updateSlider(input)
         end
     end)
 
-    UserInputService.InputChanged:Connect(function(input)
+    UIS.InputChanged:Connect(function(input)
         if dragging and input.UserInputType == Enum.UserInputType.MouseMovement then
-            local rel = (input.Position.X - bar.AbsolutePosition.X) / bar.AbsoluteSize.X
-            rel = math.clamp(rel, 0, 1)
-            knob.Position = UDim2.new(rel, 0, 0.5, 0)
-            local value = minValue + (maxValue - minValue) * rel
-            valueLabel.Text = string.format("%.3f", value)
-            onChanged(value)
+            updateSlider(input)
         end
     end)
 
     return container
 end
 
---========================================================
--- SETTINGS SLIDERS
---========================================================
-
-local settingsList = Instance.new("UIListLayout", settingsFrame)
-settingsList.Padding = UDim.new(0, 6)
-settingsList.FillDirection = Enum.FillDirection.Vertical
-settingsList.HorizontalAlignment = Enum.HorizontalAlignment.Center
-settingsList.VerticalAlignment = Enum.VerticalAlignment.Top
+-------------------------
+-- CREATE ALL SLIDERS
+-------------------------
 
 createSlider(settingsFrame, "Collect Delay", 0.01, 0.5, COLLECT_DELAY, function(v)
     COLLECT_DELAY = v
 end)
+resizePanelToFit()
 
 createSlider(settingsFrame, "Buy Delay", 0.01, 0.5, BUY_DELAY, function(v)
     BUY_DELAY = v
 end)
+resizePanelToFit()
 
 createSlider(settingsFrame, "Crate Delay", 0.1, 3.0, CRATE_DELAY, function(v)
     CRATE_DELAY = v
 end)
+resizePanelToFit()
 
 createSlider(settingsFrame, "Rebirth Delay", 0.1, 3.0, REBIRTH_DELAY, function(v)
     REBIRTH_DELAY = v
 end)
+resizePanelToFit()
 
 createSlider(settingsFrame, "Loop Delay", 0.01, 0.2, LOOP_DELAY, function(v)
     LOOP_DELAY = v
 end)
+resizePanelToFit()
 
 --========================================================
--- CONSOLE (EXECUTOR-STYLE)
+-- PART 3 — CONSOLE UI + COMMAND PARSER
 --========================================================
+
+-------------------------
+-- CONSOLE OUTPUT AREA
+-------------------------
 
 local consoleOutput = Instance.new("ScrollingFrame")
 consoleOutput.Name = "ConsoleOutput"
@@ -380,6 +454,7 @@ consoleOutput.BorderSizePixel = 0
 consoleOutput.Size = UDim2.new(1, -10, 0.8, -10)
 consoleOutput.Position = UDim2.new(0, 5, 0, 5)
 consoleOutput.ScrollBarThickness = 6
+consoleOutput.ZIndex = 4
 consoleOutput.Parent = consoleFrame
 
 local consoleList = Instance.new("UIListLayout", consoleOutput)
@@ -393,6 +468,10 @@ consoleList:GetPropertyChangedSignal("AbsoluteContentSize"):Connect(function()
     consoleOutput.CanvasSize = UDim2.new(0, 0, 0, consoleList.AbsoluteContentSize.Y + 10)
 end)
 
+-------------------------
+-- CONSOLE INPUT BOX
+-------------------------
+
 local consoleInput = Instance.new("TextBox")
 consoleInput.Name = "ConsoleInput"
 consoleInput.BackgroundColor3 = Color3.fromRGB(25, 25, 35)
@@ -405,7 +484,12 @@ consoleInput.PlaceholderText = "Enter command (e.g. /set buy_delay 0.1)"
 consoleInput.TextColor3 = Color3.fromRGB(220, 220, 230)
 consoleInput.TextScaled = true
 consoleInput.ClearTextOnFocus = false
+consoleInput.ZIndex = 4
 consoleInput.Parent = consoleFrame
+
+-------------------------
+-- LOGGING FUNCTION
+-------------------------
 
 local function logConsole(text)
     local line = Instance.new("TextLabel")
@@ -416,10 +500,15 @@ local function logConsole(text)
     line.TextColor3 = Color3.fromRGB(200, 200, 210)
     line.TextXAlignment = Enum.TextXAlignment.Left
     line.TextScaled = false
+    line.ZIndex = 4
     line.Parent = consoleOutput
 end
 
 logConsole("[Tycoon] Console ready.")
+
+-------------------------
+-- COMMAND PARSER
+-------------------------
 
 local function handleCommand(cmd)
     logConsole("> " .. cmd)
@@ -427,9 +516,13 @@ local function handleCommand(cmd)
     local parts = string.split(cmd, " ")
     if #parts == 0 then return end
 
+    -------------------------
+    -- /set VARIABLE VALUE
+    -------------------------
     if parts[1] == "/set" and #parts >= 3 then
         local varName = parts[2]
         local value = tonumber(parts[3])
+
         if not value then
             logConsole("[Error] Invalid value.")
             return
@@ -451,12 +544,26 @@ local function handleCommand(cmd)
         end
 
         logConsole(string.format("[Set] %s = %.3f", varName, value))
-    elseif parts[1] == "/log" then
-        logConsole(table.concat(parts, " ", 2))
-    else
-        logConsole("[Error] Unknown command.")
+        return
     end
+
+    -------------------------
+    -- /log MESSAGE
+    -------------------------
+    if parts[1] == "/log" then
+        logConsole(table.concat(parts, " ", 2))
+        return
+    end
+
+    -------------------------
+    -- UNKNOWN COMMAND
+    -------------------------
+    logConsole("[Error] Unknown command.")
 end
+
+-------------------------
+-- INPUT HANDLER
+-------------------------
 
 consoleInput.FocusLost:Connect(function(enterPressed)
     if enterPressed then
@@ -469,12 +576,22 @@ consoleInput.FocusLost:Connect(function(enterPressed)
 end)
 
 --========================================================
--- GAME LOGIC HELPERS
+-- PART 4 — AUTOMATION LOGIC + FINAL ASSEMBLY
 --========================================================
 
+-------------------------
+-- REBIRTH LABEL UPDATE
+-------------------------
+
 local function updateRebirth()
-    rebirthLabel.Text = "Rebirths: " .. player.leaderstats.Rebirth.Value
+    if player:FindFirstChild("leaderstats") and player.leaderstats:FindFirstChild("Rebirth") then
+        rebirthLabel.Text = "Rebirths: " .. player.leaderstats.Rebirth.Value
+    end
 end
+
+-------------------------
+-- TYCOON RELOAD WAIT
+-------------------------
 
 local function waitForTycoonReload()
     local timeout = 10
@@ -496,6 +613,10 @@ local function waitForTycoonReload()
     return false
 end
 
+-------------------------
+-- AUTO COLLECT
+-------------------------
+
 local function autoCollect()
     local aux = tycoon:FindFirstChild("Auxiliary")
     if not aux then return end
@@ -514,13 +635,26 @@ local function autoCollect()
     task.wait(COLLECT_DELAY)
 end
 
+-------------------------
+-- BUTTON LABELS (OPTIONAL)
+-------------------------
+
 local function updateButtonLabels(buttonsFolder)
-    -- you can hook this to your existing button UI if needed
+    -- Hook into your own button UI if you want.
+    -- Left empty here to avoid conflicts with existing systems.
 end
 
-local function autoBuy(buttonsFolder)
-    local money = player.leaderstats.Money.Value
+-------------------------
+-- AUTO BUY
+-------------------------
 
+local function autoBuy(buttonsFolder)
+    local moneyStat = player.leaderstats:FindFirstChild("Money")
+    if not moneyStat then return end
+
+    local money = moneyStat.Value
+
+    -- Prioritize droppers
     for _, v in buttonsFolder:GetChildren() do
         if string.find(string.lower(v.Name), "dropper") then
             local price = v:GetAttribute("Price")
@@ -533,6 +667,7 @@ local function autoBuy(buttonsFolder)
         end
     end
 
+    -- Then buy anything affordable
     for _, v in buttonsFolder:GetChildren() do
         local price = v:GetAttribute("Price")
         if price and price <= money and v:FindFirstChild("Button") then
@@ -544,13 +679,20 @@ local function autoBuy(buttonsFolder)
     end
 end
 
+-------------------------
+-- AUTO CRATES
+-------------------------
+
 local function autoCrates()
+    local moneyStat = player.leaderstats:FindFirstChild("Money")
+    if not moneyStat then return end
+
     for _, crate in ipairs(workspace:GetChildren()) do
         if crate.Name == "BalloonCrate" and crate:IsA("Model") then
             local cratePart = crate:FindFirstChild("Crate")
             local prompt = cratePart and cratePart:FindFirstChildOfClass("ProximityPrompt")
 
-            if prompt and player.leaderstats.Money.Value <= 100000 then
+            if prompt and moneyStat.Value <= 100000 then
                 local hrp = player.Character and player.Character:FindFirstChild("HumanoidRootPart")
                 if hrp then
                     hrp:PivotTo(cratePart.CFrame + Vector3.new(0, 1, 0))
@@ -566,6 +708,10 @@ local function autoCrates()
     end
 end
 
+-------------------------
+-- AUTO REBIRTH
+-------------------------
+
 local function autoRebirth()
     local aux = tycoon:FindFirstChild("Auxiliary")
     if not aux then return end
@@ -579,7 +725,11 @@ local function autoRebirth()
     REBIRTH_COOLDOWN = true
     logConsole("[Rebirth] Starting rebirth...")
 
-    player.Character:PivotTo(rebirth.Button.CFrame + Vector3.new(0, 5, 0))
+    local hrp = player.Character and player.Character:FindFirstChild("HumanoidRootPart")
+    if hrp then
+        hrp:PivotTo(rebirth.Button.CFrame + Vector3.new(0, 5, 0))
+    end
+
     task.wait(REBIRTH_DELAY)
 
     prompt:InputHoldBegin()
@@ -591,24 +741,26 @@ local function autoRebirth()
     logConsole("[Rebirth] Completed.")
 end
 
---========================================================
+-------------------------
 -- MAIN LOOP
---========================================================
+-------------------------
 
 logConsole("[Tycoon] Automation started.")
 
-while true do
-    if not REBIRTH_COOLDOWN then
-        local buttonsFolder = tycoon:FindFirstChild("Buttons")
-        if buttonsFolder then
-            autoCollect()
-            updateButtonLabels(buttonsFolder)
-            autoBuy(buttonsFolder)
-            autoCrates()
-            autoRebirth()
-            updateRebirth()
+task.spawn(function()
+    while true do
+        if not REBIRTH_COOLDOWN then
+            local buttonsFolder = tycoon:FindFirstChild("Buttons")
+            if buttonsFolder then
+                autoCollect()
+                updateButtonLabels(buttonsFolder)
+                autoBuy(buttonsFolder)
+                autoCrates()
+                autoRebirth()
+                updateRebirth()
+            end
         end
-    end
 
-    task.wait(LOOP_DELAY)
-end
+        task.wait(LOOP_DELAY)
+    end
+end)
