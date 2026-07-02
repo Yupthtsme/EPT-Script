@@ -1,9 +1,9 @@
 --========================================================
--- PART 1 — CORE + UI + MINIMIZE + SNOW + TABS
+-- PART 1 — CONFIG + CORE + WINDOW + DRAGGING + SNOW
 --========================================================
 
 -------------------------
--- CONFIG VARIABLES
+-- CUSTOMIZATION VARS  --
 -------------------------
 
 local COLLECT_DELAY  = 0.05
@@ -12,6 +12,7 @@ local CRATE_DELAY    = 1.0
 local REBIRTH_DELAY  = 0.5
 local LOOP_DELAY     = 0.05
 
+-- Purple snow settings
 local SNOW_ENABLED   = true
 local SNOW_COLOR     = Color3.fromRGB(180, 80, 255)
 local SNOW_DENSITY   = 35
@@ -19,55 +20,19 @@ local SNOW_SPEED     = 0.4
 local SNOW_SIZE      = 3
 
 local REBIRTH_COOLDOWN = false
-local SelectedElement = "Earth" -- updated by UI later
 
 -------------------------
--- SERVICES
+-- SERVICES / PLAYER   --
 -------------------------
 
 local TweenService = game:GetService("TweenService")
 local UIS = game:GetService("UserInputService")
+
 local player = game.Players.LocalPlayer
+local tycoon = workspace.Tycoons[player.Name]
 
 -------------------------
--- REMOVE workspace.Coins
--------------------------
-
-if workspace:FindFirstChild("Coins") then
-    workspace.Coins:Destroy()
-end
-
--------------------------
--- REMOTE EVENT (NIL INSTANCE)
--------------------------
-
-local function GetNil(Name, DebugId)
-    for _, Object in getnilinstances() do
-        if Object.Name == Name and Object:GetDebugId() == DebugId then
-            return Object
-        end
-    end
-end
-
-local ElementEvent = GetNil("RemoteEvent", "1_5530692")
-
--------------------------
--- GET INITIAL TYCOON
--------------------------
-
-local function getInitialTycoon()
-    for _, t in ipairs(workspace.Tycoons:GetChildren()) do
-        if t:FindFirstChild("Owner") and t.Owner.Value == player then
-            return t
-        end
-    end
-    return nil
-end
-
-local tycoon = getInitialTycoon()
-
--------------------------
--- ROOT SCREEN GUI
+-- ROOT SCREEN GUI     --
 -------------------------
 
 local screen = Instance.new("ScreenGui")
@@ -77,14 +42,14 @@ screen.ResetOnSpawn = false
 screen.Parent = game:GetService("CoreGui")
 
 -------------------------
--- MAIN WINDOW
+-- MAIN WINDOW         --
 -------------------------
 
 local mainFrame = Instance.new("Frame")
 mainFrame.Name = "MainWindow"
 mainFrame.AnchorPoint = Vector2.new(0.5, 0.5)
 mainFrame.Position = UDim2.new(0.5, 0, 0.5, 0)
-mainFrame.Size = UDim2.new(0.35, 0, 0.4, 0)
+mainFrame.Size = UDim2.new(0.35, 0, 0.4, 0) -- scaled Synapse-style
 mainFrame.BackgroundColor3 = Color3.fromRGB(25, 25, 30)
 mainFrame.BorderSizePixel = 0
 mainFrame.Parent = screen
@@ -96,97 +61,7 @@ mainStroke.Thickness = 2
 mainStroke.Color = Color3.fromRGB(120, 120, 140)
 
 -------------------------
--- MINIMIZE BUTTON
--------------------------
-
-local minimizeButton = Instance.new("TextButton")
-minimizeButton.Name = "MinimizeButton"
-minimizeButton.Size = UDim2.new(0, 28, 0, 28)
-minimizeButton.Position = UDim2.new(1, -34, 0, 6)
-minimizeButton.BackgroundColor3 = Color3.fromRGB(40, 40, 50)
-minimizeButton.Text = "-"
-minimizeButton.TextScaled = true
-minimizeButton.TextColor3 = Color3.fromRGB(200, 200, 210)
-minimizeButton.BorderSizePixel = 0
-minimizeButton.ZIndex = 10
-minimizeButton.Parent = mainFrame
-
-Instance.new("UICorner", minimizeButton).CornerRadius = UDim.new(1, 0)
-
-local minimized = false
-
-local miniBubble = Instance.new("Frame")
-miniBubble.Name = "MiniBubble"
-miniBubble.Size = UDim2.new(0, 60, 0, 60)
-miniBubble.Position = UDim2.new(0.5, -30, 0.5, -30)
-miniBubble.BackgroundColor3 = Color3.fromRGB(35, 35, 45)
-miniBubble.Visible = false
-miniBubble.Parent = screen
-
-Instance.new("UICorner", miniBubble).CornerRadius = UDim.new(1, 0)
-
-local miniLabel = Instance.new("TextLabel")
-miniLabel.BackgroundTransparency = 1
-miniLabel.Size = UDim2.new(1, 0, 1, 0)
-miniLabel.Text = "TC"
-miniLabel.TextScaled = true
-miniLabel.TextColor3 = Color3.fromRGB(220, 220, 230)
-miniLabel.Parent = miniBubble
-
--- Drag mini bubble
-local draggingMini = false
-local miniStart
-local miniPos
-
-miniBubble.InputBegan:Connect(function(input)
-    if input.UserInputType == Enum.UserInputType.MouseButton1 then
-        draggingMini = true
-        miniStart = input.Position
-        miniPos = miniBubble.Position
-    end
-end)
-
-UIS.InputChanged:Connect(function(input)
-    if draggingMini and input.UserInputType == Enum.UserInputType.MouseMovement then
-        local delta = input.Position - miniStart
-        miniBubble.Position = UDim2.new(
-            miniPos.X.Scale,
-            miniPos.X.Offset + delta.X,
-            miniPos.Y.Scale,
-            miniPos.Y.Offset + delta.Y
-        )
-    end
-end)
-
-UIS.InputEnded:Connect(function(input)
-    if input.UserInputType == Enum.UserInputType.MouseButton1 then
-        draggingMini = false
-    end
-end)
-
--- Toggle minimize
-minimizeButton.MouseButton1Click:Connect(function()
-    minimized = not minimized
-
-    if minimized then
-        mainFrame.Visible = false
-        miniBubble.Visible = true
-    else
-        mainFrame.Visible = true
-        miniBubble.Visible = false
-    end
-end)
-
-miniBubble.InputBegan:Connect(function(input)
-    if input.UserInputType == Enum.UserInputType.MouseButton1 then
-        minimized = false
-        mainFrame.Visible = true
-        miniBubble.Visible = false
-    end
-end)
-
--------------------------
--- DRAGGING MAIN WINDOW
+-- DRAGGING SYSTEM     --
 -------------------------
 
 local dragging = false
@@ -220,10 +95,11 @@ UIS.InputEnded:Connect(function(input)
 end)
 
 -------------------------
--- SNOW BACKGROUND
+-- PURPLE SNOW LAYER   --
 -------------------------
 
 local snowLayer = Instance.new("Frame")
+snowLayer.Name = "SnowLayer"
 snowLayer.BackgroundTransparency = 1
 snowLayer.Size = UDim2.new(1, 0, 1, 0)
 snowLayer.ClipsDescendants = true
@@ -264,10 +140,11 @@ end
 spawnSnow()
 
 -------------------------
--- HEADER
+-- HEADER BAR          --
 -------------------------
 
 local header = Instance.new("Frame")
+header.Name = "Header"
 header.Size = UDim2.new(1, 0, 0.15, 0)
 header.BackgroundColor3 = Color3.fromRGB(20, 20, 25)
 header.BorderSizePixel = 0
@@ -277,6 +154,7 @@ header.Parent = mainFrame
 Instance.new("UICorner", header).CornerRadius = UDim.new(0, 10)
 
 local title = Instance.new("TextLabel")
+title.Name = "Title"
 title.BackgroundTransparency = 1
 title.Size = UDim2.new(0.5, 0, 1, 0)
 title.Position = UDim2.new(0.02, 0, 0, 0)
@@ -289,6 +167,7 @@ title.ZIndex = 3
 title.Parent = header
 
 local rebirthLabel = Instance.new("TextLabel")
+rebirthLabel.Name = "RebirthCounter"
 rebirthLabel.BackgroundTransparency = 1
 rebirthLabel.Size = UDim2.new(0.45, 0, 1, 0)
 rebirthLabel.Position = UDim2.new(0.53, 0, 0, 0)
@@ -301,10 +180,11 @@ rebirthLabel.ZIndex = 3
 rebirthLabel.Parent = header
 
 -------------------------
--- TABS
+-- TAB BAR             --
 -------------------------
 
 local tabsFrame = Instance.new("Frame")
+tabsFrame.Name = "Tabs"
 tabsFrame.BackgroundTransparency = 1
 tabsFrame.Size = UDim2.new(1, 0, 0.1, 0)
 tabsFrame.Position = UDim2.new(0, 0, 0.15, 0)
@@ -312,7 +192,9 @@ tabsFrame.ZIndex = 2
 tabsFrame.Parent = mainFrame
 
 local settingsTab = Instance.new("TextButton")
+settingsTab.Name = "SettingsTab"
 settingsTab.Size = UDim2.new(0.5, 0, 1, 0)
+settingsTab.Position = UDim2.new(0, 0, 0, 0)
 settingsTab.BackgroundColor3 = Color3.fromRGB(35, 35, 45)
 settingsTab.BorderSizePixel = 0
 settingsTab.Font = Enum.Font.SourceSansBold
@@ -323,6 +205,7 @@ settingsTab.ZIndex = 3
 settingsTab.Parent = tabsFrame
 
 local consoleTab = Instance.new("TextButton")
+consoleTab.Name = "ConsoleTab"
 consoleTab.Size = UDim2.new(0.5, 0, 1, 0)
 consoleTab.Position = UDim2.new(0.5, 0, 0, 0)
 consoleTab.BackgroundColor3 = Color3.fromRGB(25, 25, 35)
@@ -335,10 +218,11 @@ consoleTab.ZIndex = 3
 consoleTab.Parent = tabsFrame
 
 -------------------------
--- CONTENT FRAMES
+-- CONTENT CONTAINER   --
 -------------------------
 
 local contentFrame = Instance.new("Frame")
+contentFrame.Name = "Content"
 contentFrame.BackgroundColor3 = Color3.fromRGB(18, 18, 24)
 contentFrame.BorderSizePixel = 0
 contentFrame.Position = UDim2.new(0, 0, 0.25, 0)
@@ -348,13 +232,16 @@ contentFrame.Parent = mainFrame
 
 Instance.new("UICorner", contentFrame).CornerRadius = UDim.new(0, 10)
 
+-- These will be filled in Part 2 & 3
 local settingsFrame = Instance.new("Frame")
+settingsFrame.Name = "SettingsFrame"
 settingsFrame.BackgroundTransparency = 1
 settingsFrame.Size = UDim2.new(1, 0, 1, 0)
 settingsFrame.ZIndex = 3
 settingsFrame.Parent = contentFrame
 
 local consoleFrame = Instance.new("Frame")
+consoleFrame.Name = "ConsoleFrame"
 consoleFrame.BackgroundTransparency = 1
 consoleFrame.Size = UDim2.new(1, 0, 1, 0)
 consoleFrame.Visible = false
@@ -384,7 +271,7 @@ consoleTab.MouseButton1Click:Connect(function()
 end)
 
 --========================================================
--- PART 2 — SETTINGS UI + SLIDERS + ELEMENT SELECTOR
+-- PART 2 — SETTINGS UI + SLIDERS + AUTO‑RESIZING PANEL
 --========================================================
 
 -------------------------
@@ -411,8 +298,8 @@ local function resizePanelToFit()
         end
     end
 
-    local minHeight = 0.35
-    local maxHeight = 0.75
+    local minHeight = 0.35  -- scaled minimum
+    local maxHeight = 0.75  -- scaled maximum
 
     local screenY = screen.AbsoluteSize.Y
     local pixelHeight = math.clamp(totalHeight, screenY * minHeight, screenY * maxHeight)
@@ -524,7 +411,7 @@ local function createSlider(parent, labelText, minValue, maxValue, initialValue,
 end
 
 -------------------------
--- CREATE DELAY SLIDERS
+-- CREATE ALL SLIDERS
 -------------------------
 
 createSlider(settingsFrame, "Collect Delay", 0.01, 0.5, COLLECT_DELAY, function(v)
@@ -552,52 +439,6 @@ createSlider(settingsFrame, "Loop Delay", 0.01, 0.2, LOOP_DELAY, function(v)
 end)
 resizePanelToFit()
 
--------------------------
--- ELEMENT SELECTOR UI
--------------------------
-
-local elementContainer = Instance.new("Frame")
-elementContainer.Size = UDim2.new(1, -20, 0, 140)
-elementContainer.BackgroundTransparency = 1
-elementContainer.ZIndex = 4
-elementContainer.Parent = settingsFrame
-
-local elementList = Instance.new("UIListLayout", elementContainer)
-elementList.FillDirection = Enum.FillDirection.Horizontal
-elementList.HorizontalAlignment = Enum.HorizontalAlignment.Center
-elementList.VerticalAlignment = Enum.VerticalAlignment.Top
-elementList.Padding = UDim.new(0, 6)
-
-local Elements = {
-    "Earth", "Crystal", "Nature", "Gravity",
-    "Ice", "Lava", "Light", "Space",
-    "Bone", "Darkness", "Devil"
-}
-
-local function createElementButton(name)
-    local btn = Instance.new("TextButton")
-    btn.Size = UDim2.new(0, 90, 0, 40)
-    btn.BackgroundColor3 = Color3.fromRGB(40, 40, 55)
-    btn.BorderSizePixel = 0
-    btn.Font = Enum.Font.SourceSansBold
-    btn.Text = name
-    btn.TextColor3 = Color3.fromRGB(220, 220, 230)
-    btn.TextScaled = true
-    btn.ZIndex = 4
-    btn.Parent = elementContainer
-
-    Instance.new("UICorner", btn).CornerRadius = UDim.new(0, 6)
-
-    btn.MouseButton1Click:Connect(function()
-        SelectedElement = name
-    end)
-end
-
-for _, elementName in ipairs(Elements) do
-    createElementButton(elementName)
-end
-
-resizePanelToFit()
 --========================================================
 -- PART 3 — CONSOLE UI + COMMAND PARSER
 --========================================================
@@ -733,12 +574,13 @@ consoleInput.FocusLost:Connect(function(enterPressed)
         end
     end
 end)
+
 --========================================================
--- PART 4 — AUTOMATION + REBIRTH + AUTO‑CLAIM + REMOTE SELECT
+-- PART 4 — AUTOMATION LOGIC + FINAL ASSEMBLY
 --========================================================
 
 -------------------------
--- UPDATE REBIRTH LABEL
+-- REBIRTH LABEL UPDATE
 -------------------------
 
 local function updateRebirth()
@@ -748,72 +590,27 @@ local function updateRebirth()
 end
 
 -------------------------
--- WAIT FOR TYCOON DELETION
+-- TYCOON RELOAD WAIT
 -------------------------
 
-local function waitForTycoonDeletion()
-    logConsole("[Tycoon] Waiting for tycoon deletion...")
-    while tycoon and tycoon.Parent do
+local function waitForTycoonReload()
+    local timeout = 10
+    local start = tick()
+
+    while tick() - start < timeout do
+        local aux = tycoon:FindFirstChild("Auxiliary")
+        local buttons = tycoon:FindFirstChild("Buttons")
+
+        if aux and buttons and aux:FindFirstChild("Collector") then
+            logConsole("[Tycoon] Reload complete.")
+            return true
+        end
+
         task.wait(0.1)
     end
-    logConsole("[Tycoon] Old tycoon deleted.")
-end
 
--------------------------
--- FIND CLAIM PAD
--------------------------
-
-local function findClaimPad()
-    for _, t in ipairs(workspace.Tycoons:GetChildren()) do
-        local claim = t:FindFirstChild("Claim")
-        if claim then
-            return claim
-        end
-    end
-    return nil
-end
-
--------------------------
--- CLAIM NEW TYCOON
--------------------------
-
-local function claimNewTycoon()
-    logConsole("[Tycoon] Searching for claim pad...")
-
-    local pad = findClaimPad()
-    if not pad then
-        logConsole("[Error] No claim pad found.")
-        return nil
-    end
-
-    local hrp = player.Character and player.Character:FindFirstChild("HumanoidRootPart")
-    if hrp then
-        hrp:PivotTo(pad.CFrame + Vector3.new(0, 3, 0))
-    end
-
-    logConsole("[Tycoon] Claiming new tycoon...")
-
-    local prompt = pad:FindFirstChildOfClass("ProximityPrompt")
-    if prompt then
-        prompt:InputHoldBegin()
-        task.wait(prompt.HoldDuration + 0.1)
-        prompt:InputHoldEnd()
-    end
-
-    -- Wait for ownership
-    local newTycoon
-    repeat
-        for _, t in ipairs(workspace.Tycoons:GetChildren()) do
-            if t:FindFirstChild("Owner") and t.Owner.Value == player then
-                newTycoon = t
-                break
-            end
-        end
-        task.wait(0.2)
-    until newTycoon
-
-    logConsole("[Tycoon] New tycoon claimed: " .. newTycoon.Name)
-    return newTycoon
+    logConsole("[Tycoon] Reload timeout.")
+    return false
 end
 
 -------------------------
@@ -821,8 +618,6 @@ end
 -------------------------
 
 local function autoCollect()
-    if not tycoon then return end
-
     local aux = tycoon:FindFirstChild("Auxiliary")
     if not aux then return end
 
@@ -838,6 +633,15 @@ local function autoCollect()
     end
 
     task.wait(COLLECT_DELAY)
+end
+
+-------------------------
+-- BUTTON LABELS (OPTIONAL)
+-------------------------
+
+local function updateButtonLabels(buttonsFolder)
+    -- Hook into your own button UI if you want.
+    -- Left empty here to avoid conflicts with existing systems.
 end
 
 -------------------------
@@ -863,7 +667,7 @@ local function autoBuy(buttonsFolder)
         end
     end
 
-    -- Buy anything affordable
+    -- Then buy anything affordable
     for _, v in buttonsFolder:GetChildren() do
         local price = v:GetAttribute("Price")
         if price and price <= money and v:FindFirstChild("Button") then
@@ -909,8 +713,6 @@ end
 -------------------------
 
 local function autoRebirth()
-    if not tycoon then return end
-
     local aux = tycoon:FindFirstChild("Auxiliary")
     if not aux then return end
 
@@ -934,18 +736,7 @@ local function autoRebirth()
     task.wait(prompt.HoldDuration + 0.5)
     prompt:InputHoldEnd()
 
-    -- Wait for tycoon deletion
-    waitForTycoonDeletion()
-
-    -- Claim new tycoon
-    tycoon = claimNewTycoon()
-
-    -- Auto-select element
-    if ElementEvent then
-        ElementEvent:FireServer(SelectedElement)
-        logConsole("[Element] Selected: " .. SelectedElement)
-    end
-
+    waitForTycoonReload()
     REBIRTH_COOLDOWN = false
     logConsole("[Rebirth] Completed.")
 end
@@ -959,15 +750,14 @@ logConsole("[Tycoon] Automation started.")
 task.spawn(function()
     while true do
         if not REBIRTH_COOLDOWN then
-            if tycoon then
-                local buttonsFolder = tycoon:FindFirstChild("Buttons")
-                if buttonsFolder then
-                    autoCollect()
-                    autoBuy(buttonsFolder)
-                    autoCrates()
-                    autoRebirth()
-                    updateRebirth()
-                end
+            local buttonsFolder = tycoon:FindFirstChild("Buttons")
+            if buttonsFolder then
+                autoCollect()
+                updateButtonLabels(buttonsFolder)
+                autoBuy(buttonsFolder)
+                autoCrates()
+                autoRebirth()
+                updateRebirth()
             end
         end
 
